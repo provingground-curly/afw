@@ -40,29 +40,24 @@ class BaseRecord:
 
         Parameters
         ----------
-
         items : `dict`
             The result of a call to self.schema.extract(); this will be used
             instead of doing any new matching, and allows the pattern matching
             to be reused to extract values from multiple records.  This
             keyword is incompatible with any position arguments and the regex,
             sub, and ordered keyword arguments.
-
         split : `bool`
             If True, fields with named subfields (e.g. points) will be split
             into separate items in the dict; instead of {"point":
             lsst.geom.Point2I(2,3)}, for instance, you'd get {"point.x":
             2, "point.y": 3}. Default is False.
-
         regex : `str` or `re` pattern object
             A regular expression to be used in addition to any glob patterns
             passed as positional arguments.  Note that this will be compared
             with re.match, not re.search.
-
         sub : `str`
             A replacement string (see `re.MatchObject.expand`) used to set the
             dictionary keys of any fields matched by regex.
-
         ordered : `bool`
             If `True`, a `collections.OrderedDict` will be returned instead of
             a standard dict, with the order corresponding to the definition

@@ -29,6 +29,16 @@ __all__ = ["assertSchemasEqual", "diffSchemas", "joinWords"]
 def joinWords(items):
     """Join a sequence of words into a comma-separated, 'and'-finalized
     string with correct English syntax.
+
+    Parameters
+    ----------
+    items : Array of `str`
+        Sequence to be joined.
+
+    Returns
+    -------
+    result : `str`
+         Correct English Oxford-comma terminated string.
     """
     if len(items) == 1:
         result = items[0]
@@ -88,6 +98,18 @@ def assertSchemasEqual(testCase, schema1, schema2, flags=Schema.IDENTICAL):
 
     Generates a message from the difference between the schemas; see
     :py:func:`diffSchemas` for more information.
+
+    Parameters
+    ----------
+    testCase :
+        Comparison test case that should fail is schemas differ.
+    schema1 : `lsst.afw.table.Schema`
+        First input schema.
+    schema2 : `lsst.afw.table.Schema`
+        Second input schema.
+    flags : `int`
+        A bitwise OR of :py:class:`lsst.afw.table.Schema.ComparisonFlags`
+        indicating which features of schema items to compare.
     """
     msg = diffSchemas(schema1, schema2, flags=flags)
     if msg:
