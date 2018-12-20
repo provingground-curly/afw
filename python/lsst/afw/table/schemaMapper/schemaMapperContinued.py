@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = []  # import only for the side effects
+__all__ = ["SchemaMapper"]  # import only for the side effects
 
 from lsst.utils import continueClass
 

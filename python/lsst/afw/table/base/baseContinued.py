@@ -19,13 +19,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+__all__ = ["Catalog"]
+
 import numpy as np
 
 from lsst.utils import continueClass, TemplateMeta
 from .base import BaseRecord, BaseCatalog
 from ..schema import Key
-
-__all__ = ["Catalog"]
 
 
 @continueClass  # noqa F811
@@ -168,8 +168,19 @@ class Catalog(metaclass=TemplateMeta):
         return self._addNew()
 
     def cast(self, type_, deep=False):
-        """Return a copy of the catalog with the given type, optionally
-        cloning the table and deep-copying all records if deep==True.
+        """Return a copy of the catalog with the given type
+
+        Parameters
+        ----------
+        type_ :
+            Type of catalog to return
+        deep : bool, optional
+            If true, clone the table and deep copy all records.
+
+        Returns
+        -------
+        copy :
+            Copy of catalog with the requested type.
         """
         if deep:
             table = self.table.clone()
@@ -189,11 +200,15 @@ class Catalog(metaclass=TemplateMeta):
     def extend(self, iterable, deep=False, mapper=None):
         """Append all records in the given iterable to the catalog.
 
-        Arguments:
-          iterable ------ any Python iterable containing records
-          deep ---------- if True, the records will be deep-copied; ignored
-                          if mapper is not None (that always implies True).
-          mapper -------- a SchemaMapper object used to translate records
+        Parameters
+        ----------
+        iterable :
+            Any Python iterable containing records
+        deep : bool, optional
+            If True, the records will be deep-copied; ignored if
+            mapper is not None (that always implies True).
+        mapper : `lsst.afw.table.schemaMapper.SchemaMapper`, optional
+            Used to translate records
         """
         self._columns = None
         # We can't use isinstance here, because the SchemaMapper symbol isn't available
@@ -220,21 +235,37 @@ class Catalog(metaclass=TemplateMeta):
         return lsst.afw.fits.reduceToFits(self)
 
     def asAstropy(self, cls=None, copy=False, unviewable="copy"):
-        """!Return an astropy.table.Table (or subclass thereof) view into this catalog.
+        """Return an astropy.table.Table (or subclass thereof) view into this catalog.
 
-        @param[in]   cls        Table subclass to use; None implies astropy.table.Table itself.
-                                Use astropy.table.QTable to get Quantity columns.
+        Parameters
+        ----------
+        cls :
+            Table subclass to use; None implies astropy.table.Table
+            itself.  Use astropy.table.QTable to get Quantity columns.
+        copy : bool, optional
+            If true, copy data from the LSST catalog to the astropy
+            table.  Not copying is usually faster, but can keep memory
+            from being freed if columns are later removed from the
+            Astropy view.
+        unviewable : `str`, optional
+            One of the following options (which is ignored if
+            copy=True ), indicating how to handle field types (string
+            and Flag) for which views cannot be constructed:
+                - 'copy' (default): copy only the unviewable fields.
+                - 'raise': raise ValueError if unviewable fields are present.
+                - 'skip': do not include unviewable fields in the Astropy Table.
 
-        @param[in]  copy        Whether to copy data from the LSST catalog to the astropy table.
-                                Not copying is usually faster, but can keep memory from being
-                                freed if columns are later removed from the Astropy view.
+        Returns
+        -------
+        cls : `astropy.table.Table`
+            Astropy view into the catalog.
 
-        @param[in]  unviewable  One of the following options, indicating how to handle field types
-                                (string and Flag) for which views cannot be constructed:
-                                  - 'copy' (default): copy only the unviewable fields.
-                                  - 'raise': raise ValueError if unviewable fields are present.
-                                  - 'skip': do not include unviewable fields in the Astropy Table.
-                                This option is ignored if copy=True.
+        Raises
+        ------
+        ValueError
+            Raised if the `unviewable` option is not a known value, or
+            if the option is 'raise' and an uncopyable field is found.
+
         """
         import astropy.table
         if cls is None:

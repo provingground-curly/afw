@@ -19,7 +19,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-__all__ = ["SimpleMatch", "ReferenceMatch", "SourceMatch"]
+__all__ = ["SimpleMatch", "ReferenceMatch", "SourceMatch", "clone", "matchCls", "packMatches"]
 
 import numpy as np
 
@@ -114,13 +114,25 @@ def packMatches(matches):
     - second: the ID of the second source record in each match
     - distance: the distance of each match
 
-    @param[in] matches  Sequence of matches, typically of type SimpleMatch, ReferenceMatch or SourceMatch.
-        Each element must support: `.first.getId()`->int, `.second.getId()->int` and `.distance->float`.
-    @return a catalog of matches.
+    Parameters
+    ----------
+    matches :
+        Sequence of matches, typically of type SimpleMatch,
+        ReferenceMatch or SourceMatch.  Each element must support:
+        `.first.getId()`->int, `.second.getId()->int` and
+        `.distance->float`.
 
-    @note this pure python implementation exists because SWIG could not easily be used to wrap
-    the overloaded C++ functions, so this was written and tested. It might be practical
-    to wrap the overloaded C++ functions with pybind11, but there didn't seem much point.
+    Returns
+    -------
+    result :
+        Thecatalog of matches.
+
+    Notes
+    -----
+    This pure python implementation exists because SWIG could not
+    easily be used to wrap the overloaded C++ functions, so this was
+    written and tested. It might be practical to wrap the overloaded
+    C++ functions with pybind11, but there didn't seem much point.
     """
     schema = Schema()
     outKey1 = schema.addField("first", type=np.int64,
