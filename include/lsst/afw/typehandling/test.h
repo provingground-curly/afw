@@ -108,10 +108,8 @@ auto const KEY3 = makeKey<std::string>(3);
 std::string const VALUE3 = "How many roads must a man walk down?";
 auto const KEY4 = makeKey<std::shared_ptr<SimpleStorable>>(4);
 auto const VALUE4 = SimpleStorable();
-auto const KEY5 = makeKey<ComplexStorable const>(5);
+auto const KEY5 = makeKey<ComplexStorable>(5);
 auto const VALUE5 = ComplexStorable(-100.0);
-auto const KEY6 = makeKey<ComplexStorable>(6);
-auto const VALUE6 = VALUE5;
 }  // namespace
 
 /**
@@ -169,33 +167,33 @@ BOOST_TEST_CASE_TEMPLATE_FUNCTION(TestAt, HeteroMapFactory) {
     demoMap->at(KEY2) = 0.0;
     BOOST_TEST(demoMap->at(KEY2) == 0.0);
     // VALUE2 is of a different type than KEY2, check that alternate key is absent
-    BOOST_CHECK_THROW(demoMap->at(makeKey<decltype(VALUE2)>(KEY2.getId())), pex::exceptions::OutOfRangeError);
+    using Type2 = std::remove_const_t<decltype(VALUE2)>;
+    BOOST_CHECK_THROW(demoMap->at(makeKey<Type2>(KEY2.getId())), pex::exceptions::OutOfRangeError);
 
     BOOST_TEST(demoMap->at(KEY3) == VALUE3);
     demoMap->at(KEY3).append(" Oops, wrong question."s);
     BOOST_TEST(demoMap->at(KEY3) == VALUE3 + " Oops, wrong question."s);
 
     BOOST_TEST(*(demoMap->at(KEY4)) == VALUE4);
-    demoMap->at(KEY4).reset();
-    BOOST_TEST(demoMap->at(KEY4).use_count() == 0);
     // VALUE4 is of a different type than KEY4, check that alternate key is absent
-    BOOST_CHECK_THROW(demoMap->at(makeKey<decltype(VALUE4)>(KEY4.getId())), pex::exceptions::OutOfRangeError);
+    using Type4 = std::remove_const_t<decltype(VALUE4)>;
+    BOOST_CHECK_THROW(demoMap->at(makeKey<Type4>(KEY4.getId())), pex::exceptions::OutOfRangeError);
 
     BOOST_TEST(demoMap->at(KEY5) == VALUE5);
     BOOST_TEST(demoMap->at(makeKey<SimpleStorable>(KEY5.getId())) == VALUE5);
     // Use BOOST_CHECK_EQUAL to avoid BOOST_TEST bug from Storable being abstract
     BOOST_CHECK_EQUAL(demoMap->at(makeKey<Storable>(KEY5.getId())), VALUE5);
 
-    BOOST_TEST(demoMap->at(KEY6) == VALUE6);
-    demoMap->at(KEY6) = ComplexStorable(5.0);
-    BOOST_TEST(demoMap->at(KEY6) == ComplexStorable(5.0));
+    ComplexStorable newValue(5.0);
+    demoMap->at(KEY5) = newValue;
+    BOOST_TEST(demoMap->at(KEY5) == newValue);
 }
 
 BOOST_TEST_CASE_TEMPLATE_FUNCTION(TestSize, HeteroMapFactory) {
     static HeteroMapFactory const factory;
     std::unique_ptr<HeteroMap<int>> demoMap = factory.makeHeteroMap();
 
-    BOOST_TEST(demoMap->size() == 7);
+    BOOST_TEST(demoMap->size() == 6);
     BOOST_TEST(!demoMap->empty());
 }
 
@@ -229,7 +227,7 @@ BOOST_TEST_CASE_TEMPLATE_FUNCTION(TestWeakContains, HeteroMapFactory) {
     BOOST_TEST(demoMap->contains(KEY3.getId()));
     BOOST_TEST(demoMap->contains(KEY4.getId()));
     BOOST_TEST(demoMap->contains(KEY5.getId()));
-    BOOST_TEST(!demoMap->contains(7));
+    BOOST_TEST(!demoMap->contains(6));
 }
 
 BOOST_TEST_CASE_TEMPLATE_FUNCTION(TestContains, HeteroMapFactory) {
@@ -348,9 +346,8 @@ BOOST_TEST_CASE_TEMPLATE_FUNCTION(TestInsertStorable, HeteroMapFactory) {
 
     ComplexStorable object(3.1416);
     BOOST_TEST(demoMap->insert<Storable>(makeKey<Storable>("foo"s), object) == true);
-    BOOST_TEST(demoMap->insert<std::shared_ptr<ComplexStorable const>>(
-                       makeKey<std::shared_ptr<ComplexStorable const>>("bar"s),
-                       std::make_shared<ComplexStorable>(3.141)) == true);
+    BOOST_TEST(demoMap->insert(makeKey<std::shared_ptr<ComplexStorable>>("bar"s),
+                               std::make_shared<ComplexStorable>(3.141)) == true);
     BOOST_TEST(demoMap->insert<Storable>(makeKey<Storable>("foo"s), SimpleStorable()) == false);
     BOOST_TEST(demoMap->insert(makeKey<std::shared_ptr<SimpleStorable>>("bar"s),
                                std::make_shared<SimpleStorable>()) == false);
@@ -359,14 +356,14 @@ BOOST_TEST_CASE_TEMPLATE_FUNCTION(TestInsertStorable, HeteroMapFactory) {
     BOOST_TEST(demoMap->size() == 2);
     BOOST_TEST(demoMap->contains("foo"s));
     BOOST_TEST(demoMap->contains(makeKey<Storable>("foo"s)));
-    BOOST_TEST(demoMap->contains(makeKey<std::shared_ptr<ComplexStorable const>>("bar"s)));
+    BOOST_TEST(demoMap->contains(makeKey<std::shared_ptr<ComplexStorable>>("bar"s)));
 
     // ComplexStorable::operator== is asymmetric
     // Use BOOST_CHECK_EQUAL to avoid BOOST_TEST bug from Storable being abstract
     BOOST_CHECK_EQUAL(object, demoMap->at(makeKey<Storable>("foo"s)));
     object = ComplexStorable(1.4);
     BOOST_CHECK_NE(object, demoMap->at(makeKey<Storable>("foo"s)));
-    BOOST_CHECK_EQUAL(*(demoMap->at(makeKey<std::shared_ptr<ComplexStorable const>>("bar"s))),
+    BOOST_CHECK_EQUAL(*(demoMap->at(makeKey<std::shared_ptr<ComplexStorable>>("bar"s))),
                       ComplexStorable(3.141));
 }
 
