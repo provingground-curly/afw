@@ -25,7 +25,7 @@
 #include "lsst/geom/Point.h"
 #include "lsst/afw/image/PhotoCalib.h"
 #include "lsst/afw/math/BoundedField.h"
-#include "lsst/afw/table/Source.h"
+#include "lsst/afw/table.h"
 #include "lsst/afw/table/io/CatalogVector.h"
 #include "lsst/afw/table/io/OutputArchive.h"
 #include "lsst/daf/base/PropertySet.h"
@@ -291,6 +291,85 @@ MaskedImage<float> PhotoCalib::calibrateImage(MaskedImage<float> const &maskedIm
     }
 
     return result;
+}
+
+afw::table::SourceCatalog PhotoCalib::calibrateCatalog(afw::table::SourceCatalog const &catalog,
+                                                       std::vector<std::string> const &instFluxFields) const {
+    auto const &inSchema = catalog.getSchema();
+    afw::table::SchemaMapper mapper(inSchema, true);  // true: share the alias map
+    mapper.addMinimalSchema(inSchema);
+
+    std::vector<table::Key<double>> instFluxKeys;
+    instFluxKeys.reserve(instFluxFields.size());
+    std::vector<table::Key<double>> instFluxErrKeys;
+    instFluxErrKeys.reserve(instFluxFields.size());
+    std::vector<table::Key<double>> fluxKeys;
+    fluxKeys.reserve(instFluxFields.size());
+    std::vector<table::Key<double>> fluxErrKeys;
+    fluxErrKeys.reserve(instFluxFields.size());
+    std::vector<table::Key<double>> magKeys;
+    magKeys.reserve(instFluxFields.size());
+    std::vector<table::Key<double>> magErrKeys;
+    magErrKeys.reserve(instFluxFields.size());
+    for (auto const &field : instFluxFields) {
+        instFluxKeys.push_back(inSchema.find<double>(field + "_instFlux").key);
+        try {
+            instFluxErrKeys.push_back(inSchema.find<double>(field + "_instFluxErr").key);
+        } catch (pex::exceptions::NotFoundError) {
+            instFluxErrKeys.push_back(table::Key<double>());  // invalid key to mark the error as missing.
+        }
+        fluxKeys.push_back(mapper.addOutputField(
+                afw::table::Field<double>(field + "_flux", "calibrated flux", "nJy"), true));
+        magKeys.push_back(mapper.addOutputField(
+                afw::table::Field<double>(field + "_mag", "calibrated magnitude", "mag(AB)"), true));
+        if (instFluxErrKeys.back().isValid()) {
+            fluxErrKeys.push_back(mapper.addOutputField(
+                    afw::table::Field<double>(field + "_fluxErr", "calibrated flux uncertainty", "nJy"),
+                    true));
+            magErrKeys.push_back(mapper.addOutputField(
+                    afw::table::Field<double>(field + "_magErr", "calibrated magnitude uncertainty",
+                                              "mag(AB)"),
+                    true));
+        } else {
+            fluxErrKeys.push_back(table::Key<double>());
+            magErrKeys.push_back(table::Key<double>());
+        }
+    }
+
+    afw::table::SourceCatalog output(mapper.getOutputSchema());
+    output.insert(mapper, output.begin(), catalog.begin(), catalog.end());
+
+    auto calibration = evaluateCatalog(output);
+    int iRec = 0;
+    for (auto &rec : output) {
+        for (size_t iKey = 0; iKey < fluxKeys.size(); ++iKey) {
+            double instFlux = rec.get(instFluxKeys[iKey]);
+            double nanojansky = toNanojansky(instFlux, calibration[iRec]);
+            rec.set(fluxKeys[iKey], nanojansky);
+            rec.set(magKeys[iKey], toMagnitude(instFlux, calibration[iRec]));
+            if (instFluxErrKeys[iKey].isValid()) {
+                double instFluxErr = rec.get(instFluxErrKeys[iKey]);
+                rec.set(fluxErrKeys[iKey], toNanojanskyErr(instFlux, instFluxErr, calibration[iRec],
+                                                           _calibrationErr, nanojansky));
+                rec.set(magErrKeys[iKey],
+                        toMagnitudeErr(instFlux, instFluxErr, calibration[iRec], _calibrationErr));
+            }
+        }
+        ++iRec;
+    }
+
+    return output;
+}
+
+afw::table::SourceCatalog PhotoCalib::calibrateCatalog(afw::table::SourceCatalog const &catalog) const {
+    std::vector<std::string> instFluxFields;
+    for (auto const &name : catalog.getSchema().getNames()) {
+        // Pick every field ending in "_instFlux", grabbing everything before that prefix.
+        if (name.size() > 10 && name.compare(name.size() - 9, 9, "_instFlux") == 0) {
+            instFluxFields.emplace_back(name.substr(0, name.size() - 9));
+        }
+    }
+    return calibrateCatalog(catalog, instFluxFields);
 }
 
 // ------------------- persistence -------------------
